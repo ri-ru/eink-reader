@@ -2,19 +2,33 @@ name: render
 on:
   push:
     paths: [queue.txt, pdfs/**, server/render.py]
+  issues:
+    types: [opened]
   workflow_dispatch:
 permissions:
   contents: write
+  issues: write
+concurrency: render
 jobs:
   render:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { ref: main }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: |
           sudo apt-get install -y -q fonts-crosextra-caladea
           pip install -q -r server/requirements.txt
+      - name: queue URL from issue
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: ${{ github.event.issue.title }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          echo "$URL" >> queue.txt
+          gh issue close "$NUM" -c "queued for rendering"
       - name: render new entries
         run: |
           touch done.txt
@@ -25,5 +39,5 @@ jobs:
       - run: |
           git config user.name  "eink-bot"
           git config user.email "eink-bot@users.noreply.github.com"
-          git add site done.txt
+          git add site done.txt queue.txt
           git diff --cached --quiet || git commit -m "render $(date -u +%F)" && git push
