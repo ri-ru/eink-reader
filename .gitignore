@@ -1,0 +1,5 @@
+firmware/include/secrets.h
+firmware/.pio/
+server/.venv/
+server/out/
+__pycache__/
