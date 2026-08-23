@@ -56,8 +56,37 @@ def extract_html(html, fallback_title):
     author = meta.author if meta and meta.author else ""
     return title, author, md or ""
 
+LW_HOSTS = ("lesswrong.com", "alignmentforum.org", "greaterwrong.com")
+
+def extract_lw(url):
+    """LessWrong / Alignment Forum via their GraphQL API: clean body, no comments, real title."""
+    import requests
+    m = re.search(r"/posts/([A-Za-z0-9]+)", url)
+    if not m:
+        return None
+    host = "www.alignmentforum.org" if "alignmentforum" in url else "www.lesswrong.com"
+    q = '{ post(input:{selector:{_id:"%s"}}) { result { title user { displayName } htmlBody } } }' % m.group(1)
+    for attempt in range(4):
+        try:
+            r = requests.post(f"https://{host}/graphql", json={"query": q}, timeout=30,
+                              headers={"User-Agent": "eink-reader/1.0 (personal e-reader)", "Content-Type": "application/json"})
+            if r.ok:
+                d = r.json()["data"]["post"]["result"]
+                html = f"<html><body><article><h1>{d['title']}</h1>{d['htmlBody']}</article></body></html>"
+                t, _, md = extract_html(html, d["title"])
+                return d["title"], (d.get("user") or {}).get("displayName", ""), md
+            print(f"graphql {r.status_code}, retrying", file=sys.stderr)
+        except (requests.RequestException, KeyError, TypeError, ValueError) as e:
+            print(f"graphql error {e}, retrying", file=sys.stderr)
+        import time; time.sleep(5 * (attempt + 1))
+    return None
+
 def extract_url(url):
     import requests
+    if any(h in url for h in LW_HOSTS):
+        got = extract_lw(url)
+        if got:
+            return got
     ua = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/126 Safari/537.36"}
     html = None
     for u in (url, url.replace("www.lesswrong.com", "www.greaterwrong.com")):
