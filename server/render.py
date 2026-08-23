@@ -72,7 +72,8 @@ def extract_lw(url):
                               headers={"User-Agent": "eink-reader/1.0 (personal e-reader)", "Content-Type": "application/json"})
             if r.ok:
                 d = r.json()["data"]["post"]["result"]
-                html = f"<html><body><article><h1>{d['title']}</h1>{d['htmlBody']}</article></body></html>"
+                body = re.sub(r"<sup[^>]*>\s*\[?(\d+)\]?\s*</sup>", r" [\1]", d["htmlBody"])
+                html = f"<html><head><title>{d['title']}</title></head><body><article>{body}</article></body></html>"
                 t, _, md = extract_html(html, d["title"])
                 return d["title"], (d.get("user") or {}).get("displayName", ""), md
             print(f"graphql {r.status_code}, retrying", file=sys.stderr)
@@ -234,7 +235,7 @@ def write_article(out, slug, title, pages, preview=True):
         if preview: im.save(d / f"preview_{n:03d}.png")
     mpath = out / "manifest.json"
     manifest = json.loads(mpath.read_text()) if mpath.exists() else []
-    manifest = [m for m in manifest if m["slug"] != slug]
+    manifest = [m for m in manifest if m["slug"] != slug and (out / "articles" / m["slug"]).is_dir()]
     manifest.append({"slug": slug, "title": title[:80], "pages": n})
     mpath.write_text(json.dumps(manifest, indent=1))
     print(f"{slug}: {n} pages → {d}")
