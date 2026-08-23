@@ -1,1 +1,2 @@
 http://www.paulgraham.com/greatwork.html
+https://www.gwern.net/Timing

@@ -1,2 +1,3 @@
 # One URL (or path to a PDF committed in pdfs/) per line. Push, and the Action renders it.
 http://www.paulgraham.com/greatwork.html
+https://www.gwern.net/Timing
