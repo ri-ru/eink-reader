@@ -15,13 +15,28 @@
   "pages": 24
  },
  {
-  "slug": "conservation-of-expected-evidence",
-  "title": "Conservation of Expected Evidence",
-  "pages": 55
- },
- {
   "slug": "five-years-and-one-week-of-less-wrong",
   "title": "Five Years and One Week of Less Wrong",
   "pages": 89
+ },
+ {
+  "slug": "returning-to-arc",
+  "title": "Returning to ARC",
+  "pages": 17
+ },
+ {
+  "slug": "conservation-of-expected-evidence",
+  "title": "Conservation of Expected Evidence",
+  "pages": 4
+ },
+ {
+  "slug": "making-beliefs-pay-rent-in-anticipated-experienc",
+  "title": "Making Beliefs Pay Rent (in Anticipated Experiences)",
+  "pages": 6
+ },
+ {
+  "slug": "adaptation-executers-not-fitness-maximizers",
+  "title": "Adaptation-Executers, not Fitness-Maximizers",
+  "pages": 6
  }
 ]
