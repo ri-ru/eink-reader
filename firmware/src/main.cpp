@@ -61,9 +61,9 @@ static bool download(const char* path) {
   http.begin(client, String(BASE_URL) + path);
   int code = http.GET();
   if (code != 200) { Serial.printf("GET %s -> %d\n", path, code); http.end(); return false; }
-  // ensure directory exists
-  String p(path); int slash = p.lastIndexOf('/');
-  if (slash > 0) SD.mkdir(p.substring(0, slash));
+  // ensure every parent directory exists
+  String p(path);
+  for (int i = 1; (i = p.indexOf('/', i)) > 0; i++) SD.mkdir(p.substring(0, i));
   File f = SD.open(path, FILE_WRITE);
   if (!f) { http.end(); return false; }
   http.writeToStream(&f);

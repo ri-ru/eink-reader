@@ -1,3 +1,8 @@
 # One URL (or path to a PDF committed in pdfs/) per line. Push, and the Action renders it.
 http://www.paulgraham.com/greatwork.html
 https://www.gwern.net/Timing
+https://www.alignmentforum.org/posts/vLFh8HP3hyNy9MCwe/returning-to-arc
+https://www.lesswrong.com/posts/jiBFC7DcCrZjGmZnJ/conservation-of-expected-evidence
+https://www.lesswrong.com/posts/a7n8GdKiAZRX86T5A/making-beliefs-pay-rent-in-anticipated-experiences
+https://www.lesswrong.com/posts/XPErvb8m9FapXCjhA/adaptation-executers-not-fitness-maximizers
+https://slatestarcodex.com/2014/03/13/five-years-and-one-week-of-less-wrong/
