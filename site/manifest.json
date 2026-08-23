@@ -15,11 +15,6 @@
   "pages": 89
  },
  {
-  "slug": "returning-to-arc",
-  "title": "Returning to ARC",
-  "pages": 17
- },
- {
   "slug": "conservation-of-expected-evidence",
   "title": "Conservation of Expected Evidence",
   "pages": 4
@@ -33,5 +28,10 @@
   "slug": "adaptation-executers-not-fitness-maximizers",
   "title": "Adaptation-Executers, not Fitness-Maximizers",
   "pages": 6
+ },
+ {
+  "slug": "returning-to-arc",
+  "title": "Returning to ARC",
+  "pages": 17
  }
 ]
