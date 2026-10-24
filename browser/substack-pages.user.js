@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Substack Pages
 // @namespace    https://github.com/ri-ru/eink-reader
-// @version      1.0.1
+// @version      1.0.2
 // @description  Open a Substack post and read real pages with e-ink page-turn buttons.
 // @match        https://*/*
 // @run-at       document-idle
@@ -23,14 +23,17 @@
   const GAP = 32;
   let host, shadow, viewport, flow, counter, previousButton, nextButton;
   let active = false, page = 0, pages = 1, width = 1, fontSize = 22;
+  let readingAnchor = 0;
   let source = null, sourceSignature = '', articleUrl = '', dismissedUrl = '';
   let seenUrl = location.origin + location.pathname, staleBody = null, staleSignature = '';
   let originalOverflow = null, layoutFrame = 0, scanTimer = 0;
-  let restoreButton = null, restoring = false;
+  let restoreButton = null;
   let savedScroll = { x: 0, y: 0 };
   const originalPageScroll = window.__einkbroPageScroll;
   const originalScrollTop = window.__einkbroScrollToTop;
   const cleanUrl = () => location.origin + location.pathname;
+  const articleTitle = () => document.querySelector('h1.post-title') || document.querySelector('article h1') || document.querySelector('h1');
+  const articleSignature = body => body.innerHTML + '\n' + (articleTitle()?.textContent || '') + '\n' + (document.querySelector('.subtitle')?.textContent || '');
   const storageKey = () => 'substack-pages:position:' + (articleUrl || cleanUrl());
   const read = (key, fallback) => {
     try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
@@ -185,7 +188,7 @@
     return pages - 1;
   }
   function persist() {
-    if (active && !restoring) write(storageKey(), { anchor: currentAnchor() });
+    if (active) write(storageKey(), { anchor: readingAnchor });
   }
   function showPage(n, save = true) {
     if (!active) return;
@@ -195,7 +198,7 @@
     counter.setAttribute('aria-label', `Page ${page + 1} of ${pages}`);
     previousButton.disabled = page === 0;
     nextButton.disabled = page === pages - 1;
-    if (save) persist();
+    if (save) { readingAnchor = currentAnchor(); persist(); }
   }
   function layout(anchor) {
     if (!active) return;
@@ -206,7 +209,10 @@
     flow.style.setProperty('--font-size', `${fontSize}px`);
     flow.style.setProperty('--image-height', `${Math.max(40, viewport.clientHeight - fontSize * 3)}px`);
     pages = Math.max(1, Math.ceil((flow.scrollWidth + GAP - 1) / (width + GAP)));
+    if (anchor != null) readingAnchor = anchor;
     showPage(anchor == null ? page : pageForAnchor(anchor), false);
+    // Passive reflow must not round the anchor back to the first text on a page:
+    // an image may not have dimensions yet and will move when it finishes loading.
     persist();
   }
   function relayout() {
@@ -216,14 +222,14 @@
     layoutFrame = requestAnimationFrame(() => layout(anchor));
   }
   function changeSize(delta) {
-    const anchor = currentAnchor();
+    const anchor = readingAnchor;
     fontSize = Math.min(36, Math.max(16, fontSize + delta));
     write('substack-pages:font-size', fontSize);
     layout(anchor);
   }
   function makeContent() {
     const fragment = document.createDocumentFragment();
-    const title = document.querySelector('h1.post-title') || document.querySelector('article h1') || document.querySelector('h1');
+    const title = articleTitle();
     if (title && !source.contains(title)) {
       const heading = document.createElement('h1'); heading.textContent = title.textContent; fragment.append(heading);
     }
@@ -242,7 +248,7 @@
     return fragment;
   }
   function openReader(body) {
-    source = body; articleUrl = cleanUrl(); sourceSignature = body.innerHTML;
+    source = body; articleUrl = cleanUrl(); sourceSignature = articleSignature(body);
     restoreButton?.remove(); restoreButton = null;
     host = document.createElement('div'); host.id = HOST_ID;
     shadow = host.attachShadow({ mode: 'open' });
@@ -266,8 +272,7 @@
     document.documentElement.append(host);
     active = true; page = 0;
     const saved = read(storageKey(), { anchor: 0 });
-    restoring = true; layout(saved.anchor); restoring = false;
-    persist();
+    layout(saved.anchor);
     flow.querySelectorAll('img').forEach(img => {
       img.addEventListener('load', relayout); img.addEventListener('error', relayout);
     });
@@ -308,7 +313,7 @@
   function scan() {
     const url = cleanUrl();
     if (seenUrl !== url) {
-      staleBody = source; staleSignature = sourceSignature; seenUrl = url;
+      staleBody = source; staleSignature = source?.innerHTML || ''; seenUrl = url;
       closeReader(false); dismissedUrl = ''; source = null; sourceSignature = '';
       restoreButton?.remove(); restoreButton = null;
     }
@@ -316,7 +321,7 @@
     // Substack uses this article-specific DOM on both subdomains and custom domains.
     // Do not turn home feeds, authentication pages, or unrelated /p/ pages into books.
     const body = document.querySelector('.body.markup');
-    if (!body || body.textContent.trim().length < 40 || !(/\/p\//.test(location.pathname) || /\/home\/post\//.test(location.pathname))) {
+    if (!body || (!body.textContent.trim() && !body.querySelector('img')) || !(/\/p\//.test(location.pathname) || /\/home\/post\//.test(location.pathname))) {
       if (active && (!source?.isConnected || articleUrl !== url)) closeReader(false);
       return;
     }
@@ -324,9 +329,9 @@
     if (body === staleBody && body.innerHTML === staleSignature) return;
     staleBody = null; staleSignature = '';
     if (active) {
-      if (body !== source || body.innerHTML !== sourceSignature) {
-        const anchor = currentAnchor();
-        source = body; sourceSignature = body.innerHTML;
+      if (body !== source || articleSignature(body) !== sourceSignature) {
+        const anchor = readingAnchor;
+        source = body; sourceSignature = articleSignature(body);
         flow.replaceChildren(makeContent());
         flow.querySelectorAll('img').forEach(img => { img.addEventListener('load', relayout); img.addEventListener('error', relayout); });
         layout(anchor);

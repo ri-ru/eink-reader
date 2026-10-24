@@ -1,0 +1,31 @@
+name: Substack Pages checks
+on:
+  push:
+    paths: [browser/**, .github/workflows/browser.yml]
+  pull_request:
+    paths: [browser/**, .github/workflows/browser.yml]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node --check substack-pages.user.js
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-evidence
+          path: browser/test-results/
+          retention-days: 7
