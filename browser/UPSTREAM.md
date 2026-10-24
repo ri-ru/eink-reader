@@ -1,0 +1,76 @@
+# EinkBro integration evidence
+
+Checked 2026-10-24 against the official **v16.7.1** release (published 2026-10-11), not the obsolete `master` branch. The repository's current default branch is `main`. This is a product implementation note, not a claim of physical-device or paid-account testing.
+
+## Distribution and installation
+
+- [Release v16.7.1](https://github.com/plateaukao/einkbro/releases/tag/v16.7.1) includes [app-universal-release.apk](https://github.com/plateaukao/einkbro/releases/download/v16.7.1/app-universal-release.apk), 4,799,165 bytes in the release metadata at inspection time. The universal build avoids assuming the user's exact Bigme CPU architecture.
+- [User guide: Userscripts](https://plateaukao.github.io/einkbro/guide.html#feature-userscripts) documents installation by tapping a `.user.js` link, accepting the prefilled editor with **OK**, and automatic execution on matching pages. The fallback is **Settings → Site Settings → Userscripts → Add userscript → Install from URL → Fetch → OK**.
+- [`NinjaWebViewClient.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/browser/NinjaWebViewClient.kt#L404) recognizes URLs whose parsed path ends in `.user.js`. [`UserScriptListActivity.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/activity/UserScriptListActivity.kt#L108) fetches that URL and presents the editor.
+- [`UserScriptMetadata.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/userscript/UserScriptMetadata.kt#L48) maps `@run-at document-idle` to `DOCUMENT_END`; unspecified/document-end also maps there. [`UserScriptManager.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/userscript/UserScriptManager.kt) applies metadata URL rules, deduplicates by name, and supports manual versioned updates through `@updateURL` / `@downloadURL`.
+
+## Native page-button bridge
+
+[`WebViewNavigationHelper.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/view/WebViewNavigationHelper.kt#L44) implements the ordinary horizontal reading path as:
+
+```kotlin
+// pageDownWithNoAnimation(), when not in native vertical/two-column mode:
+jsPageScroll(1) { handled ->
+    if (!handled) {
+        webView.scrollBy(0, shiftOffset())
+        // ... native clamping
+    }
+}
+
+// pageUpWithNoAnimation(): same route with jsPageScroll(-1).
+```
+
+Its [JavaScript invocation](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/view/WebViewNavigationHelper.kt#L157) is:
+
+```kotlin
+webView.evaluateJavascript(
+    "window.__einkbroPageScroll && window.__einkbroPageScroll($direction, $offsetPercent, $offsetPx)"
+) { result ->
+    fallback(result?.trim('"') == "true")
+}
+```
+
+Thus the script can replace `window.__einkbroPageScroll` with a handler accepting **+1 for next** and **−1 for previous**, returning boolean `true` (or string `"true"`) when it handled the action. Returning true at the first/last page is important too: it prevents native scroll fallback from moving the underlying document.
+
+The other two arguments are the configured overlap, as a fraction and pixels respectively. Actual paginated columns should ignore them: a turn means exactly one page, not one viewport minus overlap. When the paginated overlay is inactive, preserve/delegate to the prior function so normal browsing retains its behavior.
+
+Native **Jump to Top** first calls `webView.scrollTo(0, 0)` and then evaluates:
+
+```javascript
+window.__einkbroScrollToTop && window.__einkbroScrollToTop()
+```
+
+There are no arguments and no return-value test for this hook. Native **Jump to Bottom** has no corresponding JavaScript hook in this release. The script's own footer controls should be the primary visible navigation affordance.
+
+### Injection order
+
+[`fix_scrolling.js`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/assets/fix_scrolling.js) defines both globals. [`WebContentPostProcessor.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/browser/WebContentPostProcessor.kt#L68) installs it once per document.
+
+[`NinjaWebViewClient.onPageFinished`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/browser/NinjaWebViewClient.kt#L311) runs that postprocessor before injecting `DOCUMENT_END` userscripts. Using `document-idle` therefore lets Substack Pages wrap the built-in hook after it exists. Site navigation, dynamic post content, and reinjection still need idempotent handling in our script.
+
+## Key routes and defaults
+
+| Input/configuration | Verified v16.7.1 behavior |
+| --- | --- |
+| Volume down/up | [`KeyHandler.performVolumePageTurn`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/activity/KeyHandler.kt#L240) routes to next/previous no-animation methods in ordinary horizontal mode. |
+| **Volume key** | [`TouchConfig`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/preference/TouchConfig.kt#L18) default is **true**. The [touch guide](https://plateaukao.github.io/einkbro/guide.html#feature-touch) locates it in **Quick toggle**. |
+| Long-press volume | Temporarily disables page turning for five seconds and adjusts volume; use short presses for reading. |
+| **Double-click for back** | Default **false**. When enabled, short-press page turns are deferred to distinguish a double click. It is not required for Substack Pages. |
+| **Use Up/Down key** | Default **false**; **Settings → Behavior** enables D-pad up/down routing to the same no-animation methods. [Behavior settings source](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/setting/screens/BehaviorSettings.kt#L119). |
+| Toolbar **Page Up / Page Down** | [`ToolbarActionHandler`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/view/handlers/ToolbarActionHandler.kt#L73) dispatches page actions; [`BrowserActivity`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/activity/BrowserActivity.kt) calls the same no-animation methods. |
+| Touch turn areas | Optional; default disabled. Native Ebook touch interception also reaches the no-animation page methods. It is not needed when using our footer or volume buttons. |
+
+There is **no verified smooth/page-turn-animation preference to disable** in this release. The no-animation methods are the direct page-action route. Do not invent an extra setup step based on the method name.
+
+The exception is EinkBro's own **Vertical mode** / **two-column Reader mode**: they use dedicated native horizontal positioning before the JavaScript hook is considered. Substack Pages should be used without those modes. Its own layout and controls replace their role for articles.
+
+## Why a userscript is still necessary
+
+Stock page buttons normally move a scrolling page by a viewport with overlap; they do not necessarily reflow it into complete book-like pages. Stock reader mode is a separate manual action. Although the current guide says site settings can remember reader mode, v16.7.1's [`DomainConfigurationData`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/database/DomainConfiguration.kt) has no reader-mode flag, and native reader state is reset when a new document loads. The implementation does not rely on that documentation claim.
+
+The install-once script supplies automatic article detection, complete-page reflow, its own previous/next and font controls, and a bridge from native buttons. It works on the content already rendered by Substack in the browser's existing account session. No authenticated paid post was available for this source inspection; subscription/login compatibility is an architectural expectation to verify separately, not an observed end-to-end result.

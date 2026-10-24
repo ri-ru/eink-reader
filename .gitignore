@@ -3,3 +3,6 @@ firmware/.pio/
 server/.venv/
 server/out/
 __pycache__/
+browser/node_modules/
+browser/test-results/
+browser/playwright-report/

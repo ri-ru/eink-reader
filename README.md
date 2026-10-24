@@ -1,5 +1,7 @@
 # eink-reader (reTerminal E1002)
 
+**Bigme / Android:** [Substack Pages](browser/README.md) automatically turns Substack posts into book-like pages in EinkBro, with on-screen and physical page-turn buttons. The setup below is for the separate E1002 hardware project.
+
 Send a URL, read it on the E1002. GitHub renders the pages, the device pulls them over WiFi and caches
 them on its own microSD. Your Mac never has to be on, and you never touch the SD card.
 
