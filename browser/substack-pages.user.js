@@ -1,11 +1,9 @@
 // ==UserScript==
 // @name         Substack Pages
 // @namespace    https://github.com/ri-ru/eink-reader
-// @version      1.0.0
+// @version      1.0.1
 // @description  Open a Substack post and read real pages with e-ink page-turn buttons.
-// @match        https://*.substack.com/*
-// @match        https://substack.com/*
-// @match        https://*/p/*
+// @match        https://*/*
 // @run-at       document-idle
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/ri-ru/eink-reader/refs/heads/feat/substack-pages/browser/substack-pages.user.js
@@ -15,6 +13,11 @@
 (() => {
   'use strict';
   if (window.top !== window || window.__substackPages) return;
+  // Load on publication homepages too: opening a post may be an in-document navigation.
+  // Leave unrelated websites alone, without installing observers or keyboard hooks.
+  const isSubstack = location.hostname === 'substack.com' || location.hostname.endsWith('.substack.com') ||
+    !!document.querySelector('script[src^="https://substackcdn.com/"], link[href^="https://substackcdn.com/"], .body.markup');
+  if (!isSubstack) return;
 
   const HOST_ID = 'substack-pages-host';
   const GAP = 32;
@@ -130,19 +133,24 @@
   }
 
   // Character anchors keep the same passage visible across font changes and rotation.
-  function textNodes() {
-    const result = [], walker = document.createTreeWalker(flow, NodeFilter.SHOW_TEXT);
-    while (walker.nextNode()) if (walker.currentNode.textContent.length) result.push(walker.currentNode);
+  function contentUnits() {
+    const result = [], walker = document.createTreeWalker(flow, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if ((node.nodeType === Node.TEXT_NODE && node.length) || node.nodeName === 'IMG') result.push(node);
+    }
     return result;
   }
   function currentAnchor() {
     if (!flow || !active) return 0;
     const left = viewport.getBoundingClientRect().left;
     let offset = 0;
-    for (const node of textNodes()) {
+    for (const node of contentUnits()) {
+      const isText = node.nodeType === Node.TEXT_NODE;
       const range = document.createRange(); range.selectNodeContents(node);
-      const rects = [...range.getClientRects()];
+      const rects = isText ? [...range.getClientRects()] : [node.getBoundingClientRect()];
       if (rects.some(r => r.right > left + 1 && r.left < left + width - 1)) {
+        if (!isText) return offset;
         // Binary search the first character on this page within a split paragraph.
         let low = 0, high = node.length;
         while (low < high) {
@@ -153,20 +161,26 @@
         }
         return offset + low;
       }
-      offset += node.length;
+      offset += isText ? node.length : 1;
     }
     return offset;
   }
   function pageForAnchor(anchor) {
     let offset = 0;
-    for (const node of textNodes()) {
-      if (offset + node.length > anchor) {
-        const range = document.createRange();
-        const pos = Math.max(0, anchor - offset);
-        range.setStart(node, pos); range.setEnd(node, Math.min(pos + 1, node.length));
-        return Math.floor((range.getBoundingClientRect().left - viewport.getBoundingClientRect().left + 1) / (width + GAP));
+    for (const node of contentUnits()) {
+      const isText = node.nodeType === Node.TEXT_NODE;
+      const length = isText ? node.length : 1;
+      if (offset + length > anchor) {
+        let rect;
+        if (isText) {
+          const range = document.createRange();
+          const pos = Math.max(0, anchor - offset);
+          range.setStart(node, pos); range.setEnd(node, Math.min(pos + 1, length));
+          rect = range.getBoundingClientRect();
+        } else rect = node.getBoundingClientRect();
+        return Math.floor((rect.left - viewport.getBoundingClientRect().left + 1) / (width + GAP));
       }
-      offset += node.length;
+      offset += length;
     }
     return pages - 1;
   }
@@ -209,7 +223,7 @@
   }
   function makeContent() {
     const fragment = document.createDocumentFragment();
-    const title = document.querySelector('h1.post-title, h1');
+    const title = document.querySelector('h1.post-title') || document.querySelector('article h1') || document.querySelector('h1');
     if (title && !source.contains(title)) {
       const heading = document.createElement('h1'); heading.textContent = title.textContent; fragment.append(heading);
     }

@@ -9,6 +9,8 @@ Checked 2026-10-24 against the official **v16.7.1** release (published 2026-10-1
 - [`NinjaWebViewClient.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/browser/NinjaWebViewClient.kt#L404) recognizes URLs whose parsed path ends in `.user.js`. [`UserScriptListActivity.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/activity/UserScriptListActivity.kt#L108) fetches that URL and presents the editor.
 - [`UserScriptMetadata.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/userscript/UserScriptMetadata.kt#L48) maps `@run-at document-idle` to `DOCUMENT_END`; unspecified/document-end also maps there. [`UserScriptManager.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/userscript/UserScriptManager.kt) applies metadata URL rules, deduplicates by name, and supports manual versioned updates through `@updateURL` / `@downloadURL`.
 
+**Observed installation edge:** opening a raw `.user.js` URL through an external Android intent displays source rather than the installation editor. That route calls `loadUrl` without passing through `shouldOverrideUrlLoading`, where script-link interception happens. The setup guide therefore says to open the rendered guide **inside EinkBro** and tap its installation link. The explicit **Userscripts → + → Install from URL → Fetch → OK** route was exercised in the emulator and works independently of link interception.
+
 ## Native page-button bridge
 
 [`WebViewNavigationHelper.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/view/WebViewNavigationHelper.kt#L44) implements the ordinary horizontal reading path as:
@@ -52,6 +54,10 @@ There are no arguments and no return-value test for this hook. Native **Jump to 
 [`fix_scrolling.js`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/assets/fix_scrolling.js) defines both globals. [`WebContentPostProcessor.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/browser/WebContentPostProcessor.kt#L68) installs it once per document.
 
 [`NinjaWebViewClient.onPageFinished`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/browser/NinjaWebViewClient.kt#L311) runs that postprocessor before injecting `DOCUMENT_END` userscripts. Using `document-idle` therefore lets Substack Pages wrap the built-in hook after it exists. Site navigation, dynamic post content, and reinjection still need idempotent handling in our script.
+
+### Custom-domain homepages
+
+The userscript deliberately matches `https://*/*`, then immediately checks for a `substack.com` host, Substack CDN script/stylesheet assets, or `.body.markup`. It exits on unrelated pages before installing observers, keyboard handlers, or native page hooks. A narrower `/p/*` metadata rule misses a custom-domain publication homepage that opens a post through same-document navigation: the userscript was never installed in that document, and EinkBro does not inject `DOCUMENT_END` scripts on every `pushState` change. The broad match plus positive site detection covers this path without transmitting page data. Actual pagination still requires a recognized post route and article body.
 
 ## Key routes and defaults
 

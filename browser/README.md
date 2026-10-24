@@ -5,18 +5,18 @@ Open a Substack post in **EinkBro** and it becomes a book-like page automaticall
 ## Install once on the Bigme
 
 1. Install [EinkBro 16.7.1 — universal APK](https://github.com/plateaukao/einkbro/releases/download/v16.7.1/app-universal-release.apk). Android may ask you to allow installation from the browser you used to download it.
-2. **In EinkBro**, open [Install Substack Pages](https://raw.githubusercontent.com/ri-ru/eink-reader/refs/heads/feat/substack-pages/browser/substack-pages.user.js). EinkBro opens a script editor; tap **OK**. You do not need to edit the code.
+2. Open [this setup guide](https://github.com/ri-ru/eink-reader/blob/feat/substack-pages/browser/README.md) **in EinkBro**, then tap [Install Substack Pages](https://raw.githubusercontent.com/ri-ru/eink-reader/refs/heads/feat/substack-pages/browser/substack-pages.user.js) here. EinkBro opens a script editor; tap **OK**. You do not need to edit the code.
 3. Open [Substack](https://substack.com/) in EinkBro and sign in normally. Browse your subscriptions and open a post. Its readable article text switches into pages automatically.
 
 Use EinkBro to read Substack from now on; this does not change how the separate Substack app displays articles. You can bookmark Substack in EinkBro for quick access. Signing in happens on Substack itself, not through this script.
 
-If the installation link only displays code, open **Settings → Site Settings → Userscripts → Add userscript**, paste the installation link into **Install from URL**, tap **Fetch**, then **OK**. Make sure you are using EinkBro 16.7.1 or later.
+If the installation link only displays code, open **Settings → Site Settings → Userscripts → +**, paste the installation link into **Install from URL**, tap **Fetch**, then **OK**. Opening the raw script from another app can display its source instead of installing it; this fallback works from inside EinkBro. Make sure you are using EinkBro 16.7.1 or later.
 
 ## Reading
 
 | Control | Action |
 | --- | --- |
-| **Previous / Next** | Turn one page, without an animated scroll. |
+| **← Back / Next →** | Turn one page, without an animated scroll. |
 | Short press **volume up / down** | Previous / next page, when EinkBro's **Volume key** option is enabled. |
 | **A− / A+** | Smaller / larger text; pages adjust to fit. |
 | **Original** | Return to the original post for comments, sign-in, or interactive content. It stays in original view for this visit. |
@@ -37,6 +37,8 @@ There is **no animation setting to configure** in EinkBro 16.7.1: its volume-key
 ## Scope and privacy
 
 The script reformats the article already loaded by your browser. Your Substack login and subscription access remain in that browser's normal session. It does not ask for a password, export cookies, fetch through a third-party converter, or upload article contents.
+
+Its website scope includes all HTTPS pages so it can recognize Substack publications on their own domains, including opening a post from a publication homepage. It immediately exits on pages without a Substack domain, Substack assets, or recognizable article markup. This check does not transmit browsing history or article contents.
 
 Progress and text preferences use the website's local browser storage, separately for each origin. They are not synchronized between devices, browsers, or different publication domains; clearing site data can erase them. The original website and embedded media can still make their normal network requests.
 
