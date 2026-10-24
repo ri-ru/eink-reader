@@ -46,6 +46,6 @@ This is an article reader, not a replacement for Substack's entire interface. Fe
 
 ## Verification
 
-The integration targets the official EinkBro **16.7.1** release. Its install flow, native page-turn hook, and setting defaults are checked against upstream source in [UPSTREAM.md](UPSTREAM.md). Browser and Android integration verification is documented with the implementation's tests. Paid authenticated Substack access and the physical Bigme device are not claimed as tested.
+**20 Chromium tests pass**, covering automatic conversion, complete-word page coverage, buttons, images, font changes, saved positions, and Substack-style navigation. See [test coverage and reproduction instructions](tests/README.md). The official EinkBro **16.7.1** integration has also been exercised on an Android emulator; exact version/device observations and upstream source references are in [UPSTREAM.md](UPSTREAM.md). Paid authenticated Substack access and the physical Bigme device are not claimed as tested.
 
 Source: [substack-pages.user.js](substack-pages.user.js). To remove it, disable or delete **Substack Pages** in EinkBro's Userscripts screen, then reload the post.

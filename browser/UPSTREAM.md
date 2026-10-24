@@ -9,7 +9,9 @@ Checked 2026-10-24 against the official **v16.7.1** release (published 2026-10-1
 - [`NinjaWebViewClient.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/browser/NinjaWebViewClient.kt#L404) recognizes URLs whose parsed path ends in `.user.js`. [`UserScriptListActivity.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/activity/UserScriptListActivity.kt#L108) fetches that URL and presents the editor.
 - [`UserScriptMetadata.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/userscript/UserScriptMetadata.kt#L48) maps `@run-at document-idle` to `DOCUMENT_END`; unspecified/document-end also maps there. [`UserScriptManager.kt`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/userscript/UserScriptManager.kt) applies metadata URL rules, deduplicates by name, and supports manual versioned updates through `@updateURL` / `@downloadURL`.
 
-**Observed installation edge:** opening a raw `.user.js` URL through an external Android intent displays source rather than the installation editor. That route calls `loadUrl` without passing through `shouldOverrideUrlLoading`, where script-link interception happens. The setup guide therefore says to open the rendered guide **inside EinkBro** and tap its installation link. The explicit **Userscripts → + → Install from URL → Fetch → OK** route was exercised in the emulator and works independently of link interception.
+**Verified installation routes:** opening the rendered GitHub setup guide **inside EinkBro** and tapping **Install Substack Pages** opens the prefilled **1.0.2** editor; accepting **OK** installs it. The explicit **Userscripts → + → Install from URL → Fetch → OK** route was also exercised successfully in the emulator.
+
+**Observed installation edge:** opening a raw `.user.js` URL through an external Android intent displays source rather than the installation editor. That route calls `loadUrl` without passing through `shouldOverrideUrlLoading`, where script-link interception happens. This is why the setup guide says to tap its installation link from a page already open **inside EinkBro**.
 
 ## Native page-button bridge
 
@@ -80,3 +82,16 @@ The exception is EinkBro's own **Vertical mode** / **two-column Reader mode**: t
 Stock page buttons normally move a scrolling page by a viewport with overlap; they do not necessarily reflow it into complete book-like pages. Stock reader mode is a separate manual action. Although the current guide says site settings can remember reader mode, v16.7.1's [`DomainConfigurationData`](https://github.com/plateaukao/einkbro/blob/v16.7.1/app/src/main/java/info/plateaukao/einkbro/database/DomainConfiguration.kt) has no reader-mode flag, and native reader state is reset when a new document loads. The implementation does not rely on that documentation claim.
 
 The install-once script supplies automatic article detection, complete-page reflow, its own previous/next and font controls, and a bridge from native buttons. It works on the content already rendered by Substack in the browser's existing account session. No authenticated paid post was available for this source inspection; subscription/login compatibility is an architectural expectation to verify separately, not an observed end-to-end result.
+
+## Runtime verification, 2026-10-24
+
+The [20-test Chromium suite](tests/README.md) passed locally and in [GitHub Actions on Ubuntu Chromium](https://github.com/ri-ru/eink-reader/actions/runs/40083480940) at commit `1330558`, with **Substack Pages 1.0.2** (CI test duration: **8.2 seconds**). Coverage includes complete-word coverage on phone/tablet, narrow screens at maximum text size, image-only posts and reading positions, delayed title hydration, custom-domain SPA navigation, and native-hook behavior. Its fixtures are synthetic; it does not use a Substack account.
+
+Separately, the official EinkBro **16.7.1** APK (`versionCode 10112256`) was installed in an isolated **Android 16 ARM64** emulator (**API 36, 36.1 system image**), with **WebView 134.0.6998.135**, a **1080×2400** display and **420 dpi**. **Substack Pages 1.0.2** was installed through the GitHub setup guide's **Install** link, its version was confirmed in the prefilled editor, and the live article was refreshed before testing:
+
+- The [live public One Useful Thing post](https://www.oneusefulthing.org/p/the-shape-of-the-thing) automatically displayed the heading **The Shape of the Thing** and **23 pages**, with **22px** type, a **411×840 CSS-pixel** viewport, and device-pixel ratio **2.625**.
+- A real Android `KEYCODE_VOLUME_DOWN` input changed the visible page counter **1 → 2** (zero-based state **0 → 1**) and applied `translateX(-395px)`; `KEYCODE_VOLUME_UP` returned it **2 → 1**. `scrollX` and `scrollY` stayed **0** throughout: these were page replacements, not vertical scrolling.
+- EinkBro's default key settings and built-in Reader mode were left untouched; no animation or key-configuration step was necessary.
+- Screenshots were inspected visually and showed clean controls and complete line flow. The isolated emulator was shut down and removed after verification.
+
+These observations verify **1.0.2** through the real Android app's install and native-button routes, rather than merely calling the JavaScript hook in a desktop test. They do **not** verify the physical Bigme's key mapping or e-ink refresh behavior, nor authenticated paid-post access.
